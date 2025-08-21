@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		57C899A12E4DD877003717AF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C899A02E4DD877003717AF /* AppDelegate.swift */; };
+		57C899A32E4DD877003717AF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C899A22E4DD877003717AF /* SceneDelegate.swift */; };
+		57C899AA2E4DD878003717AF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C899A92E4DD878003717AF /* Assets.xcassets */; };
+		57C899D42E50C2A5003717AF /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 57C899D32E50C2A5003717AF /* SnapKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		57C899B42E4DD879003717AF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -25,12 +32,15 @@
 
 /* Begin PBXFileReference section */
 		57C8999D2E4DD877003717AF /* Nesicofe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nesicofe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		57C899A02E4DD877003717AF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		57C899A22E4DD877003717AF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		57C899A92E4DD878003717AF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		57C899B32E4DD879003717AF /* NesicofeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NesicofeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		57C899BD2E4DD879003717AF /* NesicofeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NesicofeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		57C899C52E4DD879003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */ = {
+		57C899FD2E5354C5003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -43,7 +53,7 @@
 		57C8999F2E4DD877003717AF /* Nesicofe */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				57C899C52E4DD879003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */,
+				57C899FD2E5354C5003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */,
 			);
 			path = Nesicofe;
 			sourceTree = "<group>";
@@ -65,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57C899D42E50C2A5003717AF /* SnapKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,9 +99,13 @@
 		57C899942E4DD876003717AF = {
 			isa = PBXGroup;
 			children = (
+				57C899A02E4DD877003717AF /* AppDelegate.swift */,
+				57C899A22E4DD877003717AF /* SceneDelegate.swift */,
+				57C899A92E4DD878003717AF /* Assets.xcassets */,
 				57C8999F2E4DD877003717AF /* Nesicofe */,
 				57C899B62E4DD879003717AF /* NesicofeTests */,
 				57C899C02E4DD879003717AF /* NesicofeUITests */,
+				57C899D22E50C2A5003717AF /* Frameworks */,
 				57C8999E2E4DD877003717AF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -103,6 +118,13 @@
 				57C899BD2E4DD879003717AF /* NesicofeUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		57C899D22E50C2A5003717AF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -125,6 +147,7 @@
 			);
 			name = Nesicofe;
 			packageProductDependencies = (
+				57C899D32E50C2A5003717AF /* SnapKit */,
 			);
 			productName = Nesicofe;
 			productReference = 57C8999D2E4DD877003717AF /* Nesicofe.app */;
@@ -208,6 +231,9 @@
 			);
 			mainGroup = 57C899942E4DD876003717AF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				57C899D12E50C0A2003717AF /* XCRemoteSwiftPackageReference "SnapKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 57C8999E2E4DD877003717AF /* Products */;
 			projectDirPath = "";
@@ -225,6 +251,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57C899AA2E4DD878003717AF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +276,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57C899A12E4DD877003717AF /* AppDelegate.swift in Sources */,
+				57C899A32E4DD877003717AF /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -292,11 +321,15 @@
 				DEVELOPMENT_TEAM = PA6AT97QRQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nesicofe/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Nesicofe;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Приложению нужен доступ к вашей геопозиции, чтобы показывать кофемашины поблизости.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -320,11 +353,15 @@
 				DEVELOPMENT_TEAM = PA6AT97QRQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Nesicofe/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Nesicofe;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Приложению нужен доступ к вашей геопозиции, чтобы показывать кофемашины поблизости.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
-				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarStyle = "";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -569,6 +606,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		57C899D12E50C0A2003717AF /* XCRemoteSwiftPackageReference "SnapKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SnapKit/SnapKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.7.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		57C899D32E50C2A5003717AF /* SnapKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 57C899D12E50C0A2003717AF /* XCRemoteSwiftPackageReference "SnapKit" */;
+			productName = SnapKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 57C899952E4DD876003717AF /* Project object */;
 }
