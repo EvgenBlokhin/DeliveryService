@@ -1,200 +1,172 @@
 
 import UIKit
 import MapKit
+import Combine
 
-
-class MapViewController: UIViewController, MKMapViewDelegate, CLLocationManagerDelegate, NearbyCoffeePanelDelegate, LocationServiceDelegate {
+final class MapViewController: UIViewController {
     
-    private let mapView = MKMapView()
-    private let coordinator: AppCoordinator?
-    private let locationService = LocationService.shared
-    private let nearbyPanel = NearbyCoffeePanelView()
-    private var coffeeMachines: [CoffeeMachine] = []
-    private var nearbyPanelBottomConstraint: NSLayoutConstraint?
-
-    var shouldShowNearbyPanel: Bool = true
+    private let viewModel: MapViewModel
+    private var cancellables = Set<AnyCancellable>()
     
-    init(coordinator: AppCoordinator?) {
-        self.coordinator = coordinator
+    private let map = MKMapView()
+    private let addressLabel = UILabel()
+    private let addressContainer = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+    private let geoButton = UIButton(type: .system)
+    private let chatButton = UIButton(type: .system)
+    
+    init(viewModel: MapViewModel) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
+        title = "Карта"
+        tabBarItem = UITabBarItem(title: "Карта", image: UIImage(systemName: "map"), tag: 0)
     }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    required init?(coder: NSCoder) { return nil }
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Карта кофемашин"
         view.backgroundColor = .systemBackground
-        
-        mapView.delegate = self
-        locationService.delegate = self
-        nearbyPanel.delegate = self
+        edgesForExtendedLayout = .all
+        extendedLayoutIncludesOpaqueBars = true
         
         setupMap()
-        setupNearbyPanel()
-        addCoffeeMachines()
-        setupProfileButton()
-        //setupNearbyPanel()
+        setupAddressBar()
+        setupGeoButton()
+        setupChatButton()
         
-        
-        
+        bindViewModel()
+        viewModel.loadMachines()
     }
-    // MARK: - Setup Map
+    
+    private func bindViewModel() {
+        viewModel.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] state in
+                guard let self = self else { return }
+                self.addressLabel.text = state.address
+                self.centerMap(to: state.center)
+                self.updateAnnotations(state.annotations)
+                self.chatButton.isHidden = true
+            }
+            .store(in: &cancellables)
+    }
+    
     private func setupMap() {
-        mapView.frame = view.bounds
-        mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        mapView.showsUserLocation = true
-        view.addSubview(mapView)
-    }
-    
-    // MARK: - setupLocationService
-    private func setupNearbyPanel() {
-        if locationService.handleAuthorizationStatus() {
-            updateCoffeePanel()
-            additionsNearbyPanel()
-            print("setupNearbyPanel")
-        }
-    }
-    
-    // MARK: - Добавляем кофемашины на карту
-    private func addCoffeeMachines() {
-        let machines = MockDataProvider.getCoffeeMachines()
-        coffeeMachines = machines
-        for machine in machines {
-            let annotation = MKPointAnnotation()
-            annotation.title = machine.name
-            annotation.subtitle = "⭐️ \(machine.rating) | \(machine.schedule)"
-            annotation.coordinate = machine.coordinate
-            
-            mapView.addAnnotation(annotation)
-        }
-    }
-    
-    // MARK: - setupNearbyCoffeePanel
-    private func additionsNearbyPanel() {
-        nearbyPanel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(nearbyPanel)
-        nearbyPanelBottomConstraint = nearbyPanel.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -100)
+        map.translatesAutoresizingMaskIntoConstraints = false
+        map.delegate = self
+        view.addSubview(map)
+        
         NSLayoutConstraint.activate([
-            nearbyPanel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            nearbyPanel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            nearbyPanel.heightAnchor.constraint(equalToConstant: 300),
-            nearbyPanelBottomConstraint!
+            map.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            map.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            map.topAnchor.constraint(equalTo: view.topAnchor),
+            map.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        nearbyPanel.layoutIfNeeded()
-    }
-  //  MARK: - UpdateNearbyCoffeePanel
-    private func updateCoffeePanel() {
-        locationService.startUpdatingLocation { [weak self] location in
-            guard let self = self else { return }
-            self.centerMap(on: location)
-            self.nearbyPanel.updateMachines(MockDataProvider.getCoffeeMachines(), userLocation: location)
-        }
-    }
-    // MARK: - Nearby Panel Controls
-    func expandPanel() {
-        nearbyPanelBottomConstraint?.constant = -20
-        UIView.animate(withDuration: 0.3) {
-            self.view.layoutIfNeeded()
-        }
-    }
-
-    func collapsePanel() {
-        nearbyPanelBottomConstraint?.constant = -100
-        UIView.animate(withDuration: 0.3) {
-            self.view.layoutIfNeeded()
-        }
+        map.mapType = .standard
+        map.showsUserLocation = true
+        map.isRotateEnabled = true
+        map.pointOfInterestFilter = .includingAll
     }
     
-    // MARK: - StartLocation
-    func centerMap(on location: CLLocation, radius: CLLocationDistance = 500) {
-        let region = MKCoordinateRegion(
-            center: location.coordinate,
-            latitudinalMeters: radius,
-            longitudinalMeters: radius
-        )
-        mapView.setRegion(region, animated: true)
-    }
-    
-    //MARK: - Setup Profile
-    private func setupProfileButton() {
-        let profileButton = UIBarButtonItem(
-            image: UIImage(systemName: "person.circle"),
-            style: .plain,
-            target: self,
-            action: #selector(openProfile)
-        )
-        navigationItem.leftBarButtonItem = profileButton
-    }
-    
-    @objc private func openProfile() {
-        let profileVC = UIViewController()
-        profileVC.view.backgroundColor = .systemBackground
-        profileVC.title = "Профиль"
-        navigationController?.pushViewController(profileVC, animated: true)
-    }
-}
-
-// MARK: - MKMapViewDelegate
-extension MapViewController {
-    
-    func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
-        guard let annotation = view.annotation,
-              let annotationTitle = annotation.title ?? nil,
-              let machine = coffeeMachines.first(where: { $0.name == annotationTitle }) else { return }
+    private func setupAddressBar() {
+        addressContainer.translatesAutoresizingMaskIntoConstraints = false
+        addressContainer.layer.cornerRadius = 12
+        addressContainer.clipsToBounds = true
         
-        let detailVC = MachineDetailViewController(machine: machine)
-        if let sheet = detailVC.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-        }
-        present(detailVC, animated: true, completion: nil)
-    }
-
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        guard !(annotation is MKUserLocation) else { return nil }
-
-        let identifier = "CoffeeMachineAnnotation"
-        let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
-            ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-
-        annotationView.annotation = annotation
-        annotationView.canShowCallout = true
-        annotationView.glyphText = "☕️"
-        annotationView.markerTintColor = .brown
-        annotationView.rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
-
-        return annotationView
-    }
-
-}
-
-// MARK: - LocationServiceDelegate
-
-extension MapViewController {
-    func locationService(_ service: LocationService, didUpdateLocation location: CLLocation) {
+        addressLabel.translatesAutoresizingMaskIntoConstraints = false
+        addressLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        addressLabel.textColor = .label
+        addressLabel.numberOfLines = 2
+        addressLabel.textAlignment = .center
+        addressContainer.contentView.addSubview(addressLabel)
         
-        centerMap(on: location)
-        print("centerMap")
-        locationService.stopUpdatingLocation()
+        view.addSubview(addressContainer)
+        NSLayoutConstraint.activate([
+            addressContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            addressContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            addressContainer.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.9),
+            
+            addressLabel.leadingAnchor.constraint(equalTo: addressContainer.leadingAnchor, constant: 12),
+            addressLabel.trailingAnchor.constraint(equalTo: addressContainer.trailingAnchor, constant: -12),
+            addressLabel.topAnchor.constraint(equalTo: addressContainer.topAnchor, constant: 10),
+            addressLabel.bottomAnchor.constraint(equalTo: addressContainer.bottomAnchor, constant: -10)
+        ])
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(editAddress))
+        addressContainer.addGestureRecognizer(tap)
     }
+    
+    private func setupGeoButton() {
+        geoButton.translatesAutoresizingMaskIntoConstraints = false
+        geoButton.setImage(UIImage(systemName: "location"), for: .normal)
+        geoButton.tintColor = .white
+        geoButton.backgroundColor = .systemBlue
+        geoButton.layer.cornerRadius = 26
+        geoButton.addTarget(self, action: #selector(centerOnCurrent), for: .touchUpInside)
+        
+        view.addSubview(geoButton)
+        NSLayoutConstraint.activate([
+            geoButton.widthAnchor.constraint(equalToConstant: 52),
+            geoButton.heightAnchor.constraint(equalToConstant: 52),
+            geoButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            geoButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16)
+        ])
+    }
+    
+    private func setupChatButton() {
+        chatButton.translatesAutoresizingMaskIntoConstraints = false
+        chatButton.setImage(UIImage(systemName: "bubble.left.and.bubble.right"), for: .normal)
+        chatButton.tintColor = .white
+        chatButton.backgroundColor = .systemGreen
+        chatButton.layer.cornerRadius = 26
+        chatButton.addTarget(self, action: #selector(openLastChat), for: .touchUpInside)
+        
+        view.addSubview(chatButton)
+        NSLayoutConstraint.activate([
+            chatButton.widthAnchor.constraint(equalToConstant: 52),
+            chatButton.heightAnchor.constraint(equalToConstant: 52),
+            chatButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            chatButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -16)
+        ])
+    }
+    
+    private func centerMap(to coord: CLLocationCoordinate2D) {
+        let region = MKCoordinateRegion(center: coord, latitudinalMeters: 5000, longitudinalMeters: 5000)
+        map.setRegion(region, animated: true)
+    }
+    
+    private func updateAnnotations(_ list: [MapAnnotation]) {
+        let nonUserAnnotations = map.annotations.filter { !($0 is MKUserLocation) }
+        map.removeAnnotations(nonUserAnnotations)
 
-    func locationServiceDidChangeAuthorization(_ service: LocationService, status: CLAuthorizationStatus) {
-        if status == .authorizedAlways || status == .authorizedWhenInUse {
-            print("locationServiceDidChangeAuthorization")
+        for ann in list {
+            let annotation = CustomPointAnnotation()
+            annotation.coordinate = ann.coordinate
+            annotation.title = ann.title
+            annotation.id = ann.id
+            annotation.isCourier = ann.isCourier
+            map.addAnnotation(annotation)
+        }
+    }
+    
+    @objc private func centerOnCurrent() {
+        viewModel.centerOnCurrent()
+    }
+    
+    @objc private func editAddress() {
+        showTextPrompt(title: "Изменить адрес",
+                       message: "Введите адрес вручную",
+                       placeholder: "Ульяновск, улица, дом",
+                       initial: nil) { [weak self] text in
+            self?.viewModel.setManualAddress(text) { result in
+                if case .failure(let e) = result {
+                    self?.alert("Адрес", e.localizedDescription)
+                }
             }
         }
     }
-// MARK: - NearbyCoffeePanelDelegate
-extension MapViewController {
-    func didSelectMachine(_ machine: CoffeeMachine) {
-        let detailVC = MachineDetailViewController(machine: machine)
-        if let sheet = detailVC.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-        }
-        present(detailVC, animated: true, completion: nil)
+    
+    @objc private func openLastChat() {
+        // делегируем во ViewModel → дальше решает координатор
+        viewModel.onOpenChat?("lastOrder")
     }
 }
-
-

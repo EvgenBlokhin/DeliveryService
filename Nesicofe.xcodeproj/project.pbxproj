@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		57418B2F2E53647B00088A8A /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 57418B252E53647B00088A8A /* LaunchScreen.storyboard */; };
 		57C899A12E4DD877003717AF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C899A02E4DD877003717AF /* AppDelegate.swift */; };
 		57C899A32E4DD877003717AF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57C899A22E4DD877003717AF /* SceneDelegate.swift */; };
 		57C899AA2E4DD878003717AF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C899A92E4DD878003717AF /* Assets.xcassets */; };
@@ -31,6 +32,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		57418B2B2E53647B00088A8A /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		57C8999D2E4DD877003717AF /* Nesicofe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Nesicofe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		57C899A02E4DD877003717AF /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		57C899A22E4DD877003717AF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -40,7 +42,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		57C899FD2E5354C5003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */ = {
+		57418BCB2E5F34D200088A8A /* Exceptions for "Nesicofe" folder in "Nesicofe" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -50,12 +52,17 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		57C8999F2E4DD877003717AF /* Nesicofe */ = {
+		57418BBD2E5F34D200088A8A /* Nesicofe */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				57C899FD2E5354C5003717AF /* Exceptions for "Nesicofe" folder in "Nesicofe" target */,
+				57418BCB2E5F34D200088A8A /* Exceptions for "Nesicofe" folder in "Nesicofe" target */,
 			);
 			path = Nesicofe;
+			sourceTree = "<group>";
+		};
+		57418BD02E5F35DE00088A8A /* Coordinator */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Coordinator;
 			sourceTree = "<group>";
 		};
 		57C899B62E4DD879003717AF /* NesicofeTests */ = {
@@ -101,11 +108,12 @@
 			children = (
 				57C899A02E4DD877003717AF /* AppDelegate.swift */,
 				57C899A22E4DD877003717AF /* SceneDelegate.swift */,
+				57418BD02E5F35DE00088A8A /* Coordinator */,
 				57C899A92E4DD878003717AF /* Assets.xcassets */,
-				57C8999F2E4DD877003717AF /* Nesicofe */,
+				57418B252E53647B00088A8A /* LaunchScreen.storyboard */,
+				57418BBD2E5F34D200088A8A /* Nesicofe */,
 				57C899B62E4DD879003717AF /* NesicofeTests */,
 				57C899C02E4DD879003717AF /* NesicofeUITests */,
-				57C899D22E50C2A5003717AF /* Frameworks */,
 				57C8999E2E4DD877003717AF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -118,13 +126,6 @@
 				57C899BD2E4DD879003717AF /* NesicofeUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		57C899D22E50C2A5003717AF /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,7 +144,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				57C8999F2E4DD877003717AF /* Nesicofe */,
+				57418BBD2E5F34D200088A8A /* Nesicofe */,
+				57418BD02E5F35DE00088A8A /* Coordinator */,
 			);
 			name = Nesicofe;
 			packageProductDependencies = (
@@ -251,6 +253,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				57418B2F2E53647B00088A8A /* LaunchScreen.storyboard in Resources */,
 				57C899AA2E4DD878003717AF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -309,6 +312,17 @@
 			targetProxy = 57C899BE2E4DD879003717AF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		57418B252E53647B00088A8A /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				57418B2B2E53647B00088A8A /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		57C899C72E4DD879003717AF /* Debug */ = {

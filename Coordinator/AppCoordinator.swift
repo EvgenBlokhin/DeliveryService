@@ -15,9 +15,10 @@ final class AppCoordinator: CoordinatorProtocol {
     
     private let window: UIWindow
     var navigationController: UINavigationController
-    private let locationService = LocationService.shared
+    var locationService = LocationService()
+    private var currentChild: CoordinatorProtocol?
     
-    init(window: UIWindow, navigationController: UINavigationController, locationService: LocationService) {
+    init(window: UIWindow, navigationController: UINavigationController) {
         self.window = window
         self.navigationController = navigationController
     }
@@ -39,8 +40,10 @@ final class AppCoordinator: CoordinatorProtocol {
         navigationController.setViewControllers([mainVC], animated: true)
         }
     private func showMapViewController() {
-        let mainVC = MapViewController(coordinator: self)
-        navigationController.setViewControllers([mainVC], animated: true)
+        
+        let coordinator = MapCoordinator(navigationController: navigationController, serviceLocation: locationService)
+        
+       
         }
     
     
