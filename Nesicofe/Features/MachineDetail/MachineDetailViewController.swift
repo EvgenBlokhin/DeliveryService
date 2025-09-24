@@ -1,12 +1,36 @@
+
 import UIKit
+import Combine
 import CoreLocation
 
-final class MachineDetailViewController: UIViewController {
+// MARK: - Delegate Protocol
+protocol MachineDetailViewControllerDelegate: AnyObject {
+    func didCloseDetail(_ controller: MachineDetailViewController)
+}
+
+
+final class MachineDetailViewController: UIViewController, UICollectionViewDataSource {
     
     private let machine: CoffeeMachine
     
+    @Published var closeMashineDetail: Bool = false
+    
+    weak var delegate: MachineDetailViewControllerDelegate?
+    
+    
     // MARK: - UI
-    private let photosCollectionView: UICollectionView
+    private let photosCollectionView: UICollectionView = {
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.itemSize = CGSize(width: 100, height: 100)
+        layout.minimumLineSpacing = 5
+        layout.scrollDirection = .horizontal
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        collectionView.backgroundColor = .clear
+        collectionView.showsHorizontalScrollIndicator = false
+        collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
+        return collectionView
+    }()
     private let nameLabel = UILabel()
     private let ratingLabel = UILabel()
     private let scheduleLabel = UILabel()
@@ -20,18 +44,8 @@ final class MachineDetailViewController: UIViewController {
     // MARK: - Init
     init(machine: CoffeeMachine) {
         self.machine = machine
-        
-        // Layout for horizontal photos
-        let layout = UICollectionViewFlowLayout()
-        layout.scrollDirection = .horizontal
-        layout.itemSize = CGSize(width: 120, height: 80)
-        layout.minimumLineSpacing = 8
-        self.photosCollectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
-        
         super.init(nibName: nil, bundle: nil)
-        
         self.photosCollectionView.dataSource = self
-        self.photosCollectionView.register(PhotoCell.self, forCellWithReuseIdentifier: "PhotoCell")
     }
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -44,13 +58,14 @@ final class MachineDetailViewController: UIViewController {
         setupUI()
         configureWithMachine()
     }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        delegate?.didCloseDetail(self)
+    }
     
     // MARK: - Setup
     private func setupUI() {
-        // Photos
-        photosCollectionView.backgroundColor = .clear
-        photosCollectionView.showsHorizontalScrollIndicator = false
-        
         // Labels
         nameLabel.font = .boldSystemFont(ofSize: 20)
         ratingLabel.font = .systemFont(ofSize: 16)
@@ -92,7 +107,7 @@ final class MachineDetailViewController: UIViewController {
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -16),
-            photosCollectionView.heightAnchor.constraint(equalToConstant: 100),
+            photosCollectionView.heightAnchor.constraint(equalToConstant:  100),
             orderButton.heightAnchor.constraint(equalToConstant: 50)
         ])
     }
@@ -136,10 +151,10 @@ final class MachineDetailViewController: UIViewController {
         present(alert, animated: true)
         searchAlert = alert
         
-        // Таймер-симулятор
-        searchTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { [weak self] _ in
-            self?.stopSearch(cancelled: false)
-        }
+//        // Таймер-симулятор
+//        searchTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { [weak self] _ in
+//            self?.stopSearch(cancelled: false)
+//        }
     }
     
     private func stopSearch(cancelled: Bool) {
@@ -148,18 +163,19 @@ final class MachineDetailViewController: UIViewController {
         searchAlert?.dismiss(animated: true) { [weak self] in
             guard let self else { return }
             let result = UIAlertController(
-                title: cancelled ? "Поиск отменён" : "Курьер найден ✅",
+                title: "Поиск отменён",
                 message: nil,
                 preferredStyle: .alert
             )
             result.addAction(UIAlertAction(title: "OK", style: .default))
             self.present(result, animated: true)
+            self.delegate?.didCloseDetail(self)
         }
     }
 }
 
 // MARK: - CollectionView for Photos
-extension MachineDetailViewController: UICollectionViewDataSource {
+extension MachineDetailViewController {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         machine.photos.count
     }

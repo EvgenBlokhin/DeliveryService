@@ -6,26 +6,29 @@
 //
 
 import UIKit
+import CoreLocation
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-
+ 
     var window: UIWindow?
-
-
+    
     func scene(_ scene: UIScene,
-                   willConnectTo session: UISceneSession,
-                   options connectionOptions: UIScene.ConnectionOptions) {
-            guard let winScene = (scene as? UIWindowScene) else { return }
-            let window = UIWindow(windowScene: winScene)
+               willConnectTo session: UISceneSession,
+               options connectionOptions: UIScene.ConnectionOptions) {
+        guard let winScene = (scene as? UIWindowScene) else { return }
+        let window = UIWindow(windowScene: winScene)
+        
+        let navigationController = UINavigationController()
+     
+        let coordinator = AppCoordinator(window: window, navigationController: navigationController)
+        coordinator.start()
+//        let nav = UINavigationController(rootViewController: addressVC)
+//        nav.navigationBar.prefersLargeTitles = false
 
-            let mapVC = MapViewController()
-            let nav = UINavigationController(rootViewController: mapVC)
-            nav.navigationBar.prefersLargeTitles = false
-
-            window.rootViewController = nav
-            window.makeKeyAndVisible()
-            self.window = window
-        }
+//        window.rootViewController = nav
+//        window.makeKeyAndVisible()
+        self.window = window
+    }
 
     func sceneDidDisconnect(_ scene: UIScene) {
         // Called as the scene is being released by the system.
@@ -55,6 +58,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // to restore the scene back to its current state.
     }
 
-
 }
+
 

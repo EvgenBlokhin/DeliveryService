@@ -1,8 +1,13 @@
+//
+//  UserViewController.swift
+//  Nesicofe
+//
+//  Created by dev on 27/08/2025.
+//
 
-// ProfileViewController.swift
 import UIKit
 
-final class ProfileViewController: UIViewController {
+final class UserViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
