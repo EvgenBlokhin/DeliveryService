@@ -3,7 +3,7 @@ import UIKit
 import MapKit
 import Combine
 
-final class MapViewController: UIViewController {
+final class MapViewController: UIViewController, MKMapViewDelegate {
     
     private let viewModel: MapViewModel
     private var cancellables = Set<AnyCancellable>()
@@ -34,7 +34,10 @@ final class MapViewController: UIViewController {
         setupChatButton()
         
         bindViewModel()
-        viewModel.loadMachines()
+        
+        Task {
+            await self.viewModel.loadMapData()
+        }
     }
     
     private func bindViewModel() {

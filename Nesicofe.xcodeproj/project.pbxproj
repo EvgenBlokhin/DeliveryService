@@ -39,30 +39,13 @@
 		57C899A92E4DD878003717AF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		57C899B32E4DD879003717AF /* NesicofeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NesicofeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		57C899BD2E4DD879003717AF /* NesicofeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NesicofeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		57F241E52EB23ABD007CB38D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		57418BCB2E5F34D200088A8A /* Exceptions for "Nesicofe" folder in "Nesicofe" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 57C8999C2E4DD877003717AF /* Nesicofe */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		57418BBD2E5F34D200088A8A /* Nesicofe */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				57418BCB2E5F34D200088A8A /* Exceptions for "Nesicofe" folder in "Nesicofe" target */,
-			);
 			path = Nesicofe;
-			sourceTree = "<group>";
-		};
-		57418BD02E5F35DE00088A8A /* Coordinator */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Coordinator;
 			sourceTree = "<group>";
 		};
 		57C899B62E4DD879003717AF /* NesicofeTests */ = {
@@ -107,8 +90,8 @@
 			isa = PBXGroup;
 			children = (
 				57C899A02E4DD877003717AF /* AppDelegate.swift */,
+				57F241E52EB23ABD007CB38D /* Info.plist */,
 				57C899A22E4DD877003717AF /* SceneDelegate.swift */,
-				57418BD02E5F35DE00088A8A /* Coordinator */,
 				57C899A92E4DD878003717AF /* Assets.xcassets */,
 				57418B252E53647B00088A8A /* LaunchScreen.storyboard */,
 				57418BBD2E5F34D200088A8A /* Nesicofe */,
@@ -145,7 +128,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				57418BBD2E5F34D200088A8A /* Nesicofe */,
-				57418BD02E5F35DE00088A8A /* Coordinator */,
 			);
 			name = Nesicofe;
 			packageProductDependencies = (
