@@ -6,8 +6,8 @@
 //
 import UIKit
 
-class OrdersViewModel: ObservableObject {
-    @Published var orders: [OrderModel] = []
+class OrderViewModel: ObservableObject {
+    @Published private(set) var orders: [OrderModel] = []
 
     private let ordersService: OrdersService
     private let storage: SimpleStorage
@@ -15,6 +15,9 @@ class OrdersViewModel: ObservableObject {
     init(ordersService: OrdersService, storage: SimpleStorage) {
         self.ordersService = ordersService
         self.storage = storage
+        Task {
+            await self.loadOrders()
+        }
     }
 
     func loadOrders() async {
