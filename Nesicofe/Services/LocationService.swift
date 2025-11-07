@@ -3,17 +3,17 @@ import UIKit
 
 protocol AddressProviding: AnyObject {
     var currentAddress: String { get }
-    var currentCenter: CLLocationCoordinate2D { get }
+    var currentCenter: CoordinateTransformation { get }
 }
 final class LocationService: NSObject, CLLocationManagerDelegate, AddressProviding {
     private let locationManager = CLLocationManager()
     private let geocoder = CLGeocoder()
 
     private(set) var currentAddress: String = AppConstants.defaultAddress
-    private(set) var currentCenter: CLLocationCoordinate2D = AppConstants.defaultCoord
+    private(set) var currentCenter: CoordinateTransformation = AppConstants.defaultCoord
 
     var onLocationAuthChanged: ((CLAuthorizationStatus) -> Void)?
-    var onLocationUpdated: ((CLLocationCoordinate2D, String) -> Void)?
+    var onLocationUpdated: ((CoordinateTransformation, String) -> Void)?
 
     override init() {
         super.init()
@@ -78,7 +78,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
             }
         }
 
-    func setManualAddress(_ text: String, completion: @escaping (Result<(CLLocationCoordinate2D, String), Error>) -> Void) {
+    func setManualAddress(_ text: String, completion: @escaping (Result<(CoordinateTransformation, String), Error>) -> Void) {
         geocoder.geocodeAddressString(text) { [weak self] placemarks, error in
             guard let self else { return }
             if let error = error {
@@ -91,7 +91,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
                 }
                 return
             }
-            let coord = loc.coordinate
+            let coord = CoordinateTransformation(loc.coordinate)
             let address = [marks.locality, marks.thoroughfare, marks.subThoroughfare].compactMap { $0 }.joined(separator: ", ")
             self.currentCenter = coord
             self.currentAddress = address.isEmpty ? text : address
@@ -113,7 +113,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        currentCenter = location.coordinate
+        currentCenter = .init(location.coordinate)
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
             guard let self else { return }
             let placemarks = placemarks?.first

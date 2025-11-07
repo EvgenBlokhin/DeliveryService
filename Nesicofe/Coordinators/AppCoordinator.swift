@@ -5,7 +5,7 @@
 //  Created by dev on 25/08/2025.
 //
 import UIKit
-
+@MainActor
 final class AppCoordinator {
     let navigationController = UINavigationController()
     private let window: UIWindow
@@ -34,7 +34,7 @@ final class AppCoordinator {
     private var cartCoord: CartCoordinator?
     private var profileCoord: ProfileCoordinator?
 
-    init(window: UIWindow) async {
+    init(window: UIWindow) {
         self.window = window
         
         // core deps
@@ -43,7 +43,7 @@ final class AppCoordinator {
             self.authRemote = AuthRemoteDataSource(transport: self.transport)
 
             // auth must be initialized before networkClient if refreshClosure uses authService
-            let auth = AuthService(remote: self.authRemote, keychain: self.keychainHelper)
+        let auth = AuthService(remote: self.authRemote, keychain: self.keychainHelper)
             self.authService = auth
         
             // network client with refresh closure that uses authService
@@ -75,7 +75,7 @@ final class AppCoordinator {
         // Cart
         let cartNav = UINavigationController()
         mapNav.navigationBar.isTranslucent = false
-         let cartCoord = CartCoordinator(nav: cartNav, auth: authService, cart: cartService, orders: ordersService, addressProvider: locationService)
+         let cartCoord = CartCoordinator(nav: cartNav, auth: authService, cart: cartService, chat: chatService, orders: ordersService, addressProvider: locationService)
         cartCoord.start()
 
         // Profile
@@ -114,19 +114,19 @@ final class AppCoordinator {
          
     }
 
-        private func handleOrderAccepted(orderId: String, courierId: String) async {
-            do {
-                // Получить детали ордера из сервиса или обновить локально
-                if var order = try await ordersService.getMyOrders() {
-                    order.courierId = courierId
-                    order.status = "accepted"
-                    storage.save([order], key: "orders_history")  // упрощённо — merge
-                    // Можно уведомить контроллер заказов / карту об изменении
-                }
-            } catch {
-                print("Error fetch order detail on accept:", error)
-            }
-        }
+//        private func handleOrderAccepted(orderId: String, courierId: String) async {
+//            do {
+//                // Получить детали ордера из сервиса или обновить локально
+//                if var order = try await ordersService.getMyOrders() {
+//                    order.courierId = courierId
+//                    order.status = "accepted"
+//                    storage.save([order], key: "orders_history")  // упрощённо — merge
+//                    // Можно уведомить контроллер заказов / карту об изменении
+//                }
+//            } catch {
+//                print("Error fetch order detail on accept:", error)
+//            }
+//        }
     
     
 }
