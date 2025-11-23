@@ -10,5 +10,5 @@ import CoreLocation
 struct CourierModel: Codable, Hashable {
     var id: Int
     var name: String
-    var coordinate: CoordinateTransformation
+    var coordinate: Coordinate
 }

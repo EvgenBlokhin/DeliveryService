@@ -7,19 +7,19 @@
 
 import UIKit
 import Combine
-@MainActor
+
 final class MapViewModel: ObservableObject {
-    @Published private(set) var state: MapData? = nil
-    @Published private(set) var annotation: CustomPointAnnotation
+    @Published private(set) var state: MapData?
+    @Published private(set) var annotation: CustomPointAnnotation?
     private let mapService: MapService
-    private let locationService: LocationService
+    private let locationService: UserLocationService
     private var cancellables = Set<AnyCancellable>()
     
     // Навигационные события (координатору)
     var onOpenMachine: ((MachineModel) -> Void)?
-    var onOpenChat: ((Int) -> Void)?
+    var onOpenChat: (() -> Void)?
     
-    init(service: MapService, location: LocationService) {
+    init(service: MapService, location: UserLocationService) {
         self.mapService = service
         self.locationService = location
         bindLocation()
@@ -39,7 +39,7 @@ final class MapViewModel: ObservableObject {
     
     
     private func bindLocation() {
-        locationService.onLocationUpdated = { [weak self] coord, address in
+        locationService.onLocationUserUpdated = { [weak self] coord, address in
             guard let self = self else { return }
             self.state?.center = coord
             self.state?.address = address.isEmpty ? AppConstants.defaultAddress : address
@@ -111,15 +111,16 @@ final class MapViewModel: ObservableObject {
         }
     }
     
-    @MainActor
+  
     private func rebuildAnnotations() {
         var annotations: [MapAnnotation] = []
+        guard let state = state else { return }
         annotations.append(contentsOf: state.machines.map { MapAnnotation.machine($0) })
         annotations.append(contentsOf: state.couriers.map { MapAnnotation.courier($0) })
         if let addr = state.selectedAddress {
             annotations.append(.address(addr))
         }
-        state.annotations = annotations
+        self.state?.annotations = annotations
     }
     
     @MainActor
@@ -132,30 +133,31 @@ final class MapViewModel: ObservableObject {
 
         let normalized = term.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
 
-        let filteredMachines = state.machines.filter { machine in
+        let filteredMachines = state?.machines.filter { machine in
             machine.menu.contains { drink in
                 drink.name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
                     .contains(normalized)
             }
         }
+        guard let state = state, let filtered = filteredMachines else { return }
 
         // Собираем итоговые аннотации: отфильтрованные машины + курьеры + адрес
-        var annotations: [MapAnnotation] = filteredMachines.map { MapAnnotation.machine($0) }
-        annotations.append(contentsOf: state.couriers.map { MapAnnotation.courier($0) })
-        if let address = state.selectedAddress { annotations.append(.address(address)) }
+        var annotation: [MapAnnotation] = filtered.map { MapAnnotation.machine($0) }
+        annotation.append(contentsOf: state.couriers.map { MapAnnotation.courier($0) })
+        if let address = state.selectedAddress { annotation.append(.address(address)) }
 
-        state.annotations = annotations
+        self.state?.annotations = annotation
     }
     
     // Установка адреса вручную — передаём результат наружу (совместимо с прежним контрактом)
-    func setManualAddress(_ text: String, completion: @escaping (Result<(CoordinateTransformation, String), Error>) -> Void) {
+    func setManualAddress(_ text: String, completion: @escaping (Result<(Coordinate, String), Error>) -> Void) {
         locationService.setManualAddress(text) { [weak self] result in
                 switch result {
                 case .success(let (coordinate, address)):
                     DispatchQueue.global().async {
-                        self?.state.center = coordinate
-                        self?.state.address = address
-                        self?.state.annotations.append(.address(AddressModel(title: address, coordinate: coordinate)))
+                        self?.state?.center = coordinate
+                        self?.state?.address = address
+                        self?.state?.annotations.append(.address(AddressModel(title: address, coordinate: coordinate)))
                     }
                     completion(.success((coordinate, address)))
                 case .failure(let error):

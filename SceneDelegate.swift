@@ -12,15 +12,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
  
     var window: UIWindow?
     
-    func scene(_ scene: UIScene,
+    private func scene(_ scene: UIScene,
                willConnectTo session: UISceneSession,
-               options connectionOptions: UIScene.ConnectionOptions) {
+               options connectionOptions: UIScene.ConnectionOptions) async {
         guard let winScene = (scene as? UIWindowScene) else { return }
         let window = UIWindow(windowScene: winScene)
-        
-        let navigationController = UINavigationController()
-     
-        let coordinator = AppCoordinator(window: window, navigationController: navigationController)
+        let coordinator = AppCoordinator(window: window)
         coordinator.start()
 //        let nav = UINavigationController(rootViewController: addressVC)
 //        nav.navigationBar.prefersLargeTitles = false

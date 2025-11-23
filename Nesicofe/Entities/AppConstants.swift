@@ -7,6 +7,6 @@
 import CoreLocation
 struct AppConstants {
     static let defaultAddress = "г. Ульяновск, ул. Гончарова, 1"
-    static let defaultCoord = CoordinateTransformation(54.3091, 48.3740)
+    static let defaultCoord = Coordinate(54.3091, 48.3740)
     static let courierPinId = "courier"
 }

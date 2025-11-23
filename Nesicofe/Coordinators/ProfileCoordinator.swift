@@ -6,7 +6,7 @@
 //
 import UIKit
 @MainActor
-final class ProfileCoordinator {
+final class ProfileCoordinator: Coordinator {
     let navigationController: UINavigationController
     private let authService: AuthService
     
@@ -17,7 +17,7 @@ final class ProfileCoordinator {
         
     }
 
-     func start() {
+    func start() {
         if authService.currentUser == nil {
             showAuth()
         } else {
@@ -29,7 +29,7 @@ final class ProfileCoordinator {
         let vm = AuthorizationViewModel(auth: authService)
         let vc = AuthorizationViewController(viewModel: vm)
 
-        vm.onRegisterSuccess = { [weak self]  in
+        vm.onRegisterSuccess = { [weak self] user in
             self?.showProfile()
         }
         vm.onLoginSuccess = { [weak self] user in

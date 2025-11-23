@@ -6,12 +6,12 @@
 //
 import Foundation
 
-@MainActor
-final class AuthService: ObservableObject {
-    static let shared = AuthService(remote: AuthRemoteDataSourceProtocol.self as! AuthRemoteDataSourceProtocol, keychain: KeychainHelper.shared)
 
-    @Published private(set) var isAuthenticated: Bool = false
-    @Published private(set) var currentUser: UserProfile? = nil
+final class AuthService: ObservableObject {
+    //static let shared = AuthService(remote: AuthRemoteDataSourceProtocol.self as! AuthRemoteDataSourceProtocol, keychain: KeychainHelper.shared)
+
+    //@Published private(set) var isAuthenticated: Bool = false
+    @Published private(set) var currentUser: User? = nil
 
     private let remote: AuthRemoteDataSourceProtocol
     private let keychain: KeychainHelper
@@ -19,6 +19,9 @@ final class AuthService: ObservableObject {
     private let refreshCoordinator = RefreshCoordinator()
     private(set) var inMemoryAccessToken: String? = nil
     private(set) var inMemoryExpiry: Date? = nil
+
+    var isAuthenticated: ((Bool) -> Void)?
+    var onLogout: (() -> Void)?
 
     init(remote: AuthRemoteDataSourceProtocol, keychain: KeychainHelper = .shared) {
         self.remote = remote
@@ -33,19 +36,15 @@ final class AuthService: ObservableObject {
                 self.inMemoryAccessToken = stored.tokenResponse.access_token
                 self.inMemoryExpiry = stored.expiryDate
                 self.currentUser = stored.tokenResponse.user
-                self.isAuthenticated = !(stored.tokenResponse.access_token.isEmpty)
+                self.isAuthenticated?(!(stored.tokenResponse.access_token.isEmpty))
             } else {
                 self.inMemoryAccessToken = nil
                 self.inMemoryExpiry = nil
                 self.currentUser = nil
-                self.isAuthenticated = false
+                self.isAuthenticated?(false)
             }
         } catch {
             print("AuthService.loadStored error:", error)
-            self.inMemoryAccessToken = nil
-            self.inMemoryExpiry = nil
-            self.currentUser = nil
-            self.isAuthenticated = false
         }
     }
 
@@ -64,7 +63,7 @@ final class AuthService: ObservableObject {
         inMemoryAccessToken = token.access_token
         inMemoryExpiry = expiryDate
         currentUser = token.user
-        isAuthenticated = !(token.access_token.isEmpty)
+        isAuthenticated?(!(token.access_token.isEmpty))
     }
 
     // sync getter for token (async)
@@ -77,12 +76,13 @@ final class AuthService: ObservableObject {
     }
 
     // LOGIN
-    func login(phone: String, password: String) async throws -> UserProfile {
-        let token = try await remote.login(phone: phone, password: password)
-        try await saveTokenResponse(token)
-        return token.user
+    func login(email: String, password: String) async throws -> User {
+            let token = try await remote.login(email: email, password: password)
+            try await saveTokenResponse(token)
+            return token.user
     }
-    func register(name: String, phone: String, email: String, password: String, role: String) async throws -> UserProfile {
+    
+    func register(name: String, phone: String, email: String, password: String, role: String) async throws -> User {
         let token = try await remote.register(name: name, phone: phone, email: email, password: password, role: role)
         try await saveTokenResponse(token)
         return token.user
@@ -110,8 +110,9 @@ final class AuthService: ObservableObject {
         inMemoryAccessToken = nil
         inMemoryExpiry = nil
         currentUser = nil
-        isAuthenticated = false
+        isAuthenticated?(false)
     }
+   
 
     // helpers
     func getStoredAuth() -> TokenResponse? {
@@ -121,4 +122,33 @@ final class AuthService: ObservableObject {
     enum AuthError: Error {
         case missingRefreshToken
     }
+}
+extension AuthService {
+    /// Проверяет, действителен ли текущий accessToken
+    func isAccessTokenValid(threshold: TimeInterval = 60) async -> Bool {
+        guard let expiry = await getAccessTokenExpiry() else {
+            return false
+        }
+        // Если до истечения токена осталось меньше threshold секунд — считаем его просроченным
+        return Date() < expiry.addingTimeInterval(-threshold)
+    }
+    
+    /// Обновляет access token при необходимости.
+        /// Возвращает true, если токен действителен (после возможного обновления).
+    func refreshIfNeeded() async throws -> Bool {
+            // Проверим валидность accessToken
+            if await isAccessTokenValid() {
+                // всё хорошо — токен действителен, ничего не делаем
+                return true
+            }
+
+            // Попробуем выполнить refresh
+            do {
+                try await refreshTokenSingleflight()
+                return true
+            } catch {
+                print("AuthService.refreshIfNeeded() error: \(error)")
+                return false
+            }
+        }
 }

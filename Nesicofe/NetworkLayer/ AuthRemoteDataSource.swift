@@ -7,7 +7,7 @@
 import Foundation
 
 protocol AuthRemoteDataSourceProtocol {
-    func login(phone: String, password: String) async throws -> TokenResponse
+    func login(email: String, password: String) async throws -> TokenResponse
     func register(name: String, phone: String, email: String, password: String, role: String) async throws -> TokenResponse
     func requestPasswordReset(email: String) async throws
     func verifyResetCode(email: String, code: String, newPassword: String) async throws
@@ -22,8 +22,8 @@ final class AuthRemoteDataSource: AuthRemoteDataSourceProtocol {
         self.transport = transport
     }
 
-    func login(phone: String, password: String) async throws -> TokenResponse {
-        let body = ["phone": phone, "password": password]
+    func login(email: String, password: String) async throws -> TokenResponse {
+        let body = ["email": email, "password": password]
         let req = try transport.makeRequest(path: "auth/login", method: "POST", body: DictionaryEncodable(body))
         let (data, http) = try await transport.send(req)
         guard (200...299).contains(http.statusCode) else {

@@ -10,6 +10,6 @@ struct MachineModel: Codable, Equatable, Hashable {
     let id: Int
     let title: String
     let imageName: String
-    var coordinate: CoordinateTransformation
+    var coordinate: Coordinate
     let menu: [DrinkModel]
 }

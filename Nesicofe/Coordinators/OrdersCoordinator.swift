@@ -6,22 +6,24 @@
 //
 import UIKit
 
-final class OrdersCoordinator {
+final class OrdersCoordinator: Coordinator {
     let navigationController: UINavigationController
-    private let ordersService: OrdersService
-    private let storage: SimpleStorage
+    private let ordersService: OrderService
+    private let storage: CoreDataStorage
     private let webSocket: WebSocketService
+    private let chatService: ChatService
     
 
-    init(nav: UINavigationController, orders: OrdersService, storage: SimpleStorage, webSocket: WebSocketService) {
+    init(nav: UINavigationController, orders: OrderService, storage: CoreDataStorage, webSocket: WebSocketService, chatService: ChatService) {
         self.navigationController = nav
         self.ordersService = orders
         self.storage = storage
         self.webSocket = webSocket
+        self.chatService = chatService
     }
 
     @MainActor func start() {
-        let vm = OrdersViewModel(ordersService: ordersService, storage: storage)
+        let vm = OrderViewModel(orderService: ordersService)
         let vc = OrdersViewController(viewModel: vm)
         navigationController.setViewControllers([vc], animated: false)
     }

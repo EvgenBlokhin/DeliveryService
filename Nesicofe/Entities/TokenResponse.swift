@@ -11,5 +11,5 @@ struct TokenResponse: Codable {
     let refresh_token: String?
     let expires_in: Date?
     let token_type: String?
-    let user: UserProfile
+    let user: User
 }
