@@ -8,9 +8,9 @@ import UIKit
 
 final class CartViewModel: CartViewModelProtocol  {
     private let cartService: CartService
-    private let ordersService: OrdersService
+    private let orderService: OrderService
     private let authService: AuthService
-    private weak var addressProvider: AddressProviding? //уточнить
+    private weak var addressProvider: UserAddressProviding? //уточнить
 
     // Outputs
     //var onUpdated: (() -> Void)?
@@ -20,10 +20,10 @@ final class CartViewModel: CartViewModelProtocol  {
     var onError: ((String) -> Void)?
 
     init(cart: CartService,
-         orders: OrdersService,
-         auth: AuthService, address: AddressProviding ) {
+         orders: OrderService,
+         auth: AuthService, address: UserAddressProviding ) {
         self.cartService = cart
-        self.ordersService = orders
+        self.orderService = orders
         self.authService = auth
         self.addressProvider = address
         self.cartListener()
@@ -107,7 +107,7 @@ final class CartViewModel: CartViewModelProtocol  {
             onError?("Войдите в профиль покупателя")
             return
         }
-        guard user.role == "courier"  else {
+        guard user.role.rawValue == "courier"  else {
             onCourierIsCustomerRequired?()
             return
         }
@@ -131,12 +131,8 @@ final class CartViewModel: CartViewModelProtocol  {
             return
         }
         do {
-            let order = try await ordersService.createOrder(
-                fromAddress: user.id,
-                toAddress: activeSection.address,
-                items: activeSection.items,
-                price: 12, contact: ""
-            )
+            let order = OrderModel(machineId: activeMachineId, userId: user.id, status: .created, address: address, items: activeSection.items)
+            let newOrder = try await orderService.createOrder(order: order)
             self.cartService.completeOrder()
             self.onOrderCreated?(order)
         } catch {

@@ -65,6 +65,7 @@ final class CartViewController: UIViewController, UITableViewDataSource, UITable
         orderButton.tintColor = .white
         orderButton.layer.cornerRadius = 12
         orderButton.addTarget(self, action: #selector(orderTapped), for: .touchUpInside)
+        
 
         let v = UIStackView(arrangedSubviews: [totalLabel, orderButton])
         v.axis = .vertical

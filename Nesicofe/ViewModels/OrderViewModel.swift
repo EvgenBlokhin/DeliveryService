@@ -9,27 +9,35 @@ import UIKit
 class OrderViewModel: ObservableObject {
     @Published private(set) var orders: [OrderModel] = []
 
-    private let ordersService: OrdersService
-    private let storage: SimpleStorage
+    private let orderService: OrderService
 
-    init(ordersService: OrdersService, storage: SimpleStorage) {
-        self.ordersService = ordersService
-        self.storage = storage
-        Task {
-            await self.loadOrders()
+    init(orderService: OrderService) {
+        self.orderService = orderService
+        Task { await self.loadOrders() }
+        
+        orderService.onOrderUpdate = { [weak self] order in
+            guard let self = self else { return }
+            self.applyOrderUpdate(order: order)
         }
+    }
+    private func applyOrderUpdate(order: OrderModel) {
+        if let serverId = order.id, let orderId = orders.firstIndex(where: { $0.id == serverId }) {
+            orders[orderId] = order
+        } else {
+            if let idem = order.idempotencyKey,
+               let idx = orders.firstIndex(where: {$0.idempotencyKey == idem}) {
+                orders[idx] = order
+            } else { orders.append(order)}
+        }
+        orders.sort {$0.createdAt > $1.createdAt}
     }
 
     func loadOrders() async {
-        if let saved: [OrderModel] = storage.load([OrderModel].self, key: "orders_history") {
-            self.orders = saved
-        }
         do {
-            let fresh = try await ordersService.getMyOrders()
-            self.orders = fresh
-            storage.save(fresh, key: "orders_history")
+            let orders = try orderService.loadAllLocalOrders()
+            self.orders = orders
         } catch {
-            print("Ошибка getMyOrders:", error)
+            print("Ошибка получения всех ордеров:", error)
         }
     }
 }

@@ -44,7 +44,7 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
         viewModel.$state
             .receive(on: DispatchQueue.main)
             .sink { [weak self] state in
-                guard let self = self else { return }
+                guard let self = self, let state = state else { return }
                 self.addressLabel.text = state.address
                 self.centerMap(to: state.center)
                 self.updateAnnotations(state.annotations)
@@ -132,8 +132,8 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
         ])
     }
     
-    private func centerMap(to coord: CLLocationCoordinate2D) {
-        let region = MKCoordinateRegion(center: coord, latitudinalMeters: 5000, longitudinalMeters: 5000)
+    private func centerMap(to coord: Coordinate) {
+        let region = MKCoordinateRegion(center: coord.clLocationCoordinate, latitudinalMeters: 5000, longitudinalMeters: 5000)
         map.setRegion(region, animated: true)
     }
     
@@ -143,7 +143,7 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
 
         for ann in list {
             let annotation = CustomPointAnnotation()
-            annotation.coordinate = ann.coordinate
+            annotation.coordinate = ann.coordinate.clLocationCoordinate
             annotation.title = ann.title
             annotation.id = ann.id
             annotation.isCourier = ann.isCourier
@@ -170,6 +170,6 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
     
     @objc private func openLastChat() {
         // делегируем во ViewModel → дальше решает координатор
-        viewModel.onOpenChat?("lastOrder")
+        viewModel.onOpenChat?(1)
     }
 }

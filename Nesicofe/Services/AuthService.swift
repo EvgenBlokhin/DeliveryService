@@ -6,12 +6,12 @@
 //
 import Foundation
 
-@MainActor
+
 final class AuthService: ObservableObject {
     //static let shared = AuthService(remote: AuthRemoteDataSourceProtocol.self as! AuthRemoteDataSourceProtocol, keychain: KeychainHelper.shared)
 
     //@Published private(set) var isAuthenticated: Bool = false
-    @Published private(set) var currentUser: UserProfile? = nil
+    @Published private(set) var currentUser: User? = nil
 
     private let remote: AuthRemoteDataSourceProtocol
     private let keychain: KeychainHelper
@@ -76,13 +76,13 @@ final class AuthService: ObservableObject {
     }
 
     // LOGIN
-    func login(email: String, password: String) async throws -> UserProfile {
+    func login(email: String, password: String) async throws -> User {
             let token = try await remote.login(email: email, password: password)
             try await saveTokenResponse(token)
             return token.user
     }
     
-    func register(name: String, phone: String, email: String, password: String, role: String) async throws -> UserProfile {
+    func register(name: String, phone: String, email: String, password: String, role: String) async throws -> User {
         let token = try await remote.register(name: name, phone: phone, email: email, password: password, role: role)
         try await saveTokenResponse(token)
         return token.user

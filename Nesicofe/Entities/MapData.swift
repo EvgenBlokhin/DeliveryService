@@ -9,7 +9,7 @@ import CoreLocation
 
 struct MapData {
     var address: String
-    var center: CoordinateTransformation
+    var center: Coordinate
     
     // Источники правды внутри state:
     var machines: [MachineModel]      // полный список машин (на сервере)
@@ -22,7 +22,7 @@ struct MapData {
     var showChatButton: Bool
     
     init(address: String,
-         center: CoordinateTransformation,
+         center: Coordinate,
     machines: [MachineModel] = [],
     couriers: [CourierModel] = [],
     selectedAddress: AddressModel? = nil,

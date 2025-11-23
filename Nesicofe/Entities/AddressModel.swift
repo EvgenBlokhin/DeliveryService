@@ -8,5 +8,5 @@
 struct AddressModel:  Equatable {
     
     var title: String
-    var coordinate: CoordinateTransformation
+    var coordinate: Coordinate
 }

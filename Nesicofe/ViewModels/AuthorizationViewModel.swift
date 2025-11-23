@@ -13,9 +13,10 @@ final class AuthorizationViewModel {
     var email: String = ""
     var password: String = ""
     var role: UserRole = .customer
-
-    var onLoginSuccess: ((UserProfile) -> Void)?
-    var onRegisterSuccess: (() -> Void)?
+    
+    var onLoginSuccess: ((User) -> Void)?
+    var onRegisterSuccess: ((User) -> Void)?
+    var onLogout: (() -> Void)?
     var onError: ((String) -> Void)?
     
     private let auth: AuthService
@@ -24,33 +25,37 @@ final class AuthorizationViewModel {
         //self.delegate = self
         //delegate?.statusAutherization(false)
     }
-
+    
     func canRegister() -> Bool { !name.isEmpty && !phone.isEmpty }
     func canLogin() -> Bool { !phone.isEmpty }
-
+    
     func registerTapped() async {
         guard canRegister() else {
             onError?("Заполните имя и телефон")
             return
         }
         do {
-            try await auth.register(name: name, phone: phone, email: email, password: password, role: role.rawValue)
-            self.onRegisterSuccess?()
+            let register = try await auth.register(name: name, phone: phone, email: email, password: password, role: role.rawValue)
+            self.onRegisterSuccess?(register)
         } catch {
             self.onError?("\(error)")
         }
     }
-
+    
     func loginTapped() async {
         guard canLogin() else {
             onError?("Введите телефон")
             return
         }
         do {
-            let user = try await auth.login(phone: phone, password: password)
+            let user = try await auth.login(email: email , password: password)
             self.onLoginSuccess?(user)
         } catch {
             self.onError?("\(error)")
         }
+    }
+    func logout() async {
+        await auth.logout()
+        onLogout?()
     }
 }

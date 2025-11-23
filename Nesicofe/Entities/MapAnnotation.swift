@@ -28,7 +28,7 @@ enum MapAnnotation: Equatable {
         }
     }
     
-    var coordinate: CoordinateTransformation {
+    var coordinate: Coordinate {
         switch self {
         case .machine(let model): return model.coordinate
         case .courier(let coord): return coord.coordinate

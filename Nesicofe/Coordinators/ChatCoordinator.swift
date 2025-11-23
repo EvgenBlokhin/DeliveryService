@@ -6,17 +6,24 @@
 //
 import UIKit
 final class ChatCoordinator {
-    private let nav: UINavigationController
+    private let navigationController: UINavigationController
     private let service: ChatService
+    private let webSocket: WebSocketService
+    private let orderId: String
+    private let userId: String
 
-    init(nav: UINavigationController, service: ChatService) {
-        self.nav = nav
+    init(navigationController: UINavigationController, service: ChatService, webSocket: WebSocketService, orderId: String, userId: String) {
+        self.navigationController = navigationController
         self.service = service
+        self.webSocket = webSocket
+        self.orderId = orderId
+        self.userId = userId
     }
 
-    @MainActor func openChat(orderId: Int) {
-        let vm = ChatViewModel(orderId: orderId, chatService: service)
+    @MainActor func start(orderId: String) {
+        let vm = ChatViewModel(chatService: service, orderId: orderId, currentUserId: userId)
         let vc = ChatViewController(viewModel: vm)
-        nav.pushViewController(vc, animated: true)
+        
+        navigationController.setViewControllers([vc], animated: false)
     }
 }

@@ -6,20 +6,20 @@
 //
 import UIKit
 
-final class MapCoordinator {
+final class MapCoordinator: Coordinator {
     let navigationController: UINavigationController
     let tabBarController: UITabBarController
     private let mapService: MapService
     private let cartService: CartService
-    private let ordersService: OrdersService
+    private let ordersService: OrderService
     private let chatService: ChatService
-    private let locationService: LocationService
+    private let locationService: UserLocationService
     private let webSocketSerrvice: WebSocketService
 
     // retain Details
     private var detailsCoord: MachineDetailsCoordinator?
 
-    init(navigation: UINavigationController, tabBar: UITabBarController, map: MapService, cart: CartService, chat: ChatService, orders: OrdersService, location: LocationService, webSocket: WebSocketService) {
+    init(navigation: UINavigationController, tabBar: UITabBarController, map: MapService, cart: CartService, chat: ChatService, orders: OrderService, location: UserLocationService, webSocket: WebSocketService) {
         self.navigationController = navigation
         self.mapService = map
         self.cartService = cart
@@ -37,16 +37,7 @@ final class MapCoordinator {
         viewModel.onOpenMachine = { [weak self] machineId in
             guard let self else { return }
             self.openMachine(machineId)
-           
-  }
-        viewModel.onOpenChat = { [weak self] orderId in
-            guard let self else { return }
-            let chatCoord = ChatCoordinator(nav: self.navigationController, service: self.chatService)
-            DispatchQueue.main.async {
-                chatCoord.openChat(orderId: orderId)
-            }
         }
-        navigationController.setViewControllers([viewController], animated: false)
     }
 
 
