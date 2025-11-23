@@ -6,7 +6,7 @@
 //
 import CoreLocation
 
-struct CoordinateTransformation: Hashable, Codable {
+struct Coordinate: Hashable, Codable {
     var latitude: Double
     var longitude: Double
 

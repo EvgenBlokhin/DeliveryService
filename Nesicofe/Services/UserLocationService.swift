@@ -1,25 +1,30 @@
 import CoreLocation
 import UIKit
+import Combine
 
-protocol AddressProviding: AnyObject {
+protocol UserAddressProviding: AnyObject {
     var currentAddress: String { get }
-    var currentCenter: CoordinateTransformation { get }
+    var currentCenter: Coordinate { get }
 }
-final class LocationService: NSObject, CLLocationManagerDelegate, AddressProviding {
+final class UserLocationService: NSObject, UserAddressProviding {
     private let locationManager = CLLocationManager()
     private let geocoder = CLGeocoder()
-
+    private var cancelLable: Set<AnyCancellable>
+    
     private(set) var currentAddress: String = AppConstants.defaultAddress
-    private(set) var currentCenter: CoordinateTransformation = AppConstants.defaultCoord
-
+    private(set) var currentCenter: Coordinate = AppConstants.defaultCoord
+    
     var onLocationAuthChanged: ((CLAuthorizationStatus) -> Void)?
-    var onLocationUpdated: ((CoordinateTransformation, String) -> Void)?
-
+    var onLocationUserUpdated: ((Coordinate, String) -> Void)?
+    var onLocationCourierUpdate: ((Coordinate) -> Void)?
+    
     override init() {
         super.init()
         locationManager.delegate = self
     }
-
+    
+    
+    
     
     func requestAccess() {
         
@@ -36,8 +41,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
             
         case .authorizedWhenInUse, .authorizedAlways:
             print ("Все уже разрешено")
-
-         default:
+            
+        default:
             break
         }
     }
@@ -56,29 +61,29 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
     }
     
     // MARK: - Показ alert'а для перехода в настройки
-        private func showSettingsAlert() {
-            DispatchQueue.main.async {
-                let alert = UIAlertController(
-                    title: "Геолокация отключена",
-                    message: "Пожалуйста, включите геолокацию в настройках для работы приложения",
-                    preferredStyle: .alert
-                )
-                
-                alert.addAction(UIAlertAction(title: "Настройки", style: .default) { _ in
-                    self.openSettings()
-                })
-                
-                alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-                
-                // Показываем alert на текущем окне
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let rootVC = windowScene.windows.first?.rootViewController {
-                    rootVC.present(alert, animated: true)
-                }
+    private func showSettingsAlert() {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(
+                title: "Геолокация отключена",
+                message: "Пожалуйста, включите геолокацию в настройках для работы приложения",
+                preferredStyle: .alert
+            )
+            
+            alert.addAction(UIAlertAction(title: "Настройки", style: .default) { _ in
+                self.openSettings()
+            })
+            
+            alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+            
+            // Показываем alert на текущем окне
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                rootVC.present(alert, animated: true)
             }
         }
-
-    func setManualAddress(_ text: String, completion: @escaping (Result<(CoordinateTransformation, String), Error>) -> Void) {
+    }
+    
+    func setManualAddress(_ text: String, completion: @escaping (Result<(Coordinate, String), Error>) -> Void) {
         geocoder.geocodeAddressString(text) { [weak self] placemarks, error in
             guard let self else { return }
             if let error = error {
@@ -91,18 +96,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
                 }
                 return
             }
-            let coord = CoordinateTransformation(loc.coordinate)
+            let coord = Coordinate(loc.coordinate)
             let address = [marks.locality, marks.thoroughfare, marks.subThoroughfare].compactMap { $0 }.joined(separator: ", ")
             self.currentCenter = coord
             self.currentAddress = address.isEmpty ? text : address
             DispatchQueue.main.async {
                 completion(.success((coord, self.currentAddress)))
-                self.onLocationUpdated?(coord, self.currentAddress)
+                self.onLocationUserUpdated?(coord, self.currentAddress)
             }
         }
     }
+}
 
-    // CLLocationManagerDelegate
+extension UserLocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onLocationAuthChanged?(manager.authorizationStatus)
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
@@ -120,7 +126,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate, AddressProvidi
             let address = [placemarks?.locality, placemarks?.thoroughfare, placemarks?.subThoroughfare].compactMap { $0 }.joined(separator: ", ")
             if !address.isEmpty { self.currentAddress = address }
             DispatchQueue.main.async {
-                self.onLocationUpdated?(self.currentCenter, self.currentAddress)
+                self.onLocationUserUpdated?(self.currentCenter, self.currentAddress)
             }
         }
     }
