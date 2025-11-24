@@ -42,13 +42,15 @@ final class AppCoordinator: @preconcurrency Coordinator {
         self.networkClient = NetworkClient(transport: self.transport, authService: self.authService)
         self.coreDataStorage = CoreDataStorage()
         self.cartService = CartService()
-        self.locationService = UserLocationService(authService: self.authService)
+        self.locationService = UserLocationService(authService: self.authService, defaultAddress: AppConstants.defaultAddress, defaultCoord: AppConstants.defaultCoord)
         self.mapService = MapService(client: self.networkClient)
         self.orderService = OrderService(client: self.networkClient, coreData: self.coreDataStorage)
         self.bufferStorage = CoreDataBufferStorage(core: self.coreDataStorage)
         self.webSocketService = WebSocketService(authService: self.authService, orderService: self.orderService, keyChain: self.keychainHelper, bufferStorage: self.bufferStorage)
         self.orderService.setWebSocket(self.webSocketService)
         self.mapService.setWebSocket(self.webSocketService)
+        self.locationService.setWebSocket(self.webSocketService)
+        
         self.chatService = ChatService(wsService: self.webSocketService, bufferStorage: self.bufferStorage, coreData: self.coreDataStorage )
         
         self.start()

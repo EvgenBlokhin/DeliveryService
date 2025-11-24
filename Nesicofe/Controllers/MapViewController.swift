@@ -19,11 +19,6 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
         super.init(nibName: nil, bundle: nil)
         title = "Карта"
         tabBarItem = UITabBarItem(title: "Карта", image: UIImage(systemName: "map"), tag: 0)
-    }
-    required init?(coder: NSCoder) { return nil }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
         view.backgroundColor = .systemBackground
         edgesForExtendedLayout = .all
         extendedLayoutIncludesOpaqueBars = true
@@ -34,7 +29,11 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
         setupChatButton()
         
         bindViewModel()
-        
+    }
+    required init?(coder: NSCoder) { return nil }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
         Task {
             await self.viewModel.loadMapData()
         }
@@ -166,10 +165,5 @@ final class MapViewController: UIViewController, MKMapViewDelegate {
                 }
             }
         }
-    }
-    
-    @objc private func openLastChat() {
-        // делегируем во ViewModel → дальше решает координатор
-        viewModel.onOpenChat?(1)
     }
 }
