@@ -55,13 +55,12 @@ final class WebSocketService: @unchecked Sendable {
     public var onOpen: (() -> Void)?
     public var onClose: ((Error?) -> Void)?
     
-    @Published private(set) var courierLocation: [Coordinate] = []
+    
     private var incomingChatHandler: ((ChatMessage) -> Void)?
 
     var onRequestForDelivery: ((OrderModel) -> Void)?
     var onOrderCancelled: ((OrderModel) -> Void)?
     var onOrderUpdated: ((OrderModel) -> Void)?
-    
     var onCourierAccepted: ((OrderModel) -> Void)?
     var onCourierDeclined: ((OrderModel) -> Void)?
 

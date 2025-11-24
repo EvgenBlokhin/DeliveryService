@@ -5,122 +5,128 @@
 //  Created by dev on 29/10/2025.
 //
 
-import UIKit
+import Foundation
 import Combine
+import UIKit
 
 final class MapViewModel: ObservableObject {
     @Published private(set) var state: MapData?
     @Published private(set) var annotation: CustomPointAnnotation?
+    
     private let mapService: MapService
     private let locationService: UserLocationService
     private var cancellables = Set<AnyCancellable>()
     
-    // Навигационные события (координатору)
     var onOpenMachine: ((MachineModel) -> Void)?
     var onOpenChat: (() -> Void)?
     
-    init(service: MapService, location: UserLocationService) {
+    init(service: MapService, locationService: UserLocationService) {
         self.mapService = service
-        self.locationService = location
-        bindLocation()
-        requestAccess()
-        Task.detached {
-            await self.loadMapData()
-        }
-    }
-    
-    func requestAccess() {
-        locationService.requestAccess()
-    }
-    
-    func centerOnCurrent() {
-        locationService.centerOnCurrent()
-    }
-    
-    
-    private func bindLocation() {
-        locationService.onLocationUserUpdated = { [weak self] coord, address in
-            guard let self = self else { return }
-            self.state?.center = coord
-            self.state?.address = address.isEmpty ? AppConstants.defaultAddress : address
-        }
-    }
-    
-    func updateAnnotations(_ list: [MapAnnotation]) {
-        let annotation = CustomPointAnnotation()
+        self.locationService = locationService
         
-        for ann in list {
-            annotation.coordinate = ann.coordinate.clLocationCoordinate
-            annotation.title = ann.title
-            annotation.id = ann.id
-            annotation.isCourier = ann.isCourier
-            
-            self.annotation = annotation
+        bindLocationUpdates()
+        locationService.requestAccess()
+        Task {
+            await loadMapData()
         }
     }
     
-    // Восстановление/обновление списка машин (public — можно вызывать из VC)
+    private func bindLocationUpdates() {
+        // Подписываемся на координаты
+        locationService.locationPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] coord in
+                guard let self = self else { return }
+                // Обновляем центр и адрес в UI через state
+                var address = self.locationService.currentAddress
+                if address.isEmpty {
+                    address = AppConstants.defaultAddress
+                }
+                let addrModel = AddressModel(title: address, coordinate: coord)
+                
+                self.state = MapData(
+                    address: address,
+                    center: coord,
+                    machines: self.state?.machines ?? [],
+                    couriers: self.state?.couriers ?? [],
+                    selectedAddress: addrModel,
+                    annotations: self.state?.annotations ?? [],
+                    showChatButton: self.state?.showChatButton ?? false
+                )
+            }
+            .store(in: &cancellables)
+        
+        // Подписываемся на адрес
+        locationService.addressPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] address in
+                guard let self = self else { return }
+                // Обновляем адрес в state
+                let center = self.locationService.currentCenter
+                let addrModel = AddressModel(title: address, coordinate: center)
+                
+                self.state = MapData(
+                    address: address,
+                    center: center,
+                    machines: self.state?.machines ?? [],
+                    couriers: self.state?.couriers ?? [],
+                    selectedAddress: addrModel,
+                    annotations: self.state?.annotations ?? [],
+                    showChatButton: self.state?.showChatButton ?? false
+                )
+            }
+            .store(in: &cancellables)
+    }
     
     func loadMapData() async {
-        // Временные контейнеры для новых значений
-        var newMachines: [MachineModel] = []
-        var newCouriers: [CourierModel] = []
-        
-        // Получаем адрес/центр из LocationService (локальная информация, без ожидания сети)
-        let location = locationService.currentAddress.isEmpty ? AppConstants.defaultAddress : locationService.currentAddress
-        let center = locationService.currentCenter
-        let addressModel = AddressModel(title: location, coordinate: center)
+        // Локальные стартовые значения
+        let initialAddress = locationService.currentAddress.isEmpty
+            ? AppConstants.defaultAddress
+            : locationService.currentAddress
+        let initialCenter = locationService.currentCenter
+        let addressModel = AddressModel(title: initialAddress, coordinate: initialCenter)
         
         do {
-            // Попытка загрузить данные с сервера
-            newMachines = try await mapService.fetchMachines()
-            newCouriers = try await mapService.fetchCourier()
-            
-            // Построим аннотации из свежих данных: машины + курьеры + адрес (если нужен)
+            let machines = try await mapService.fetchMachines()
+            let couriers = try await mapService.fetchCourier()
             var annotations: [MapAnnotation] = []
-            annotations.append(contentsOf: newMachines.map { MapAnnotation.machine($0) })
-            annotations.append(contentsOf: newCouriers.map { MapAnnotation.courier($0) })
-            // Вставляем адрес в конец (или в начало — по UX)
+            annotations.append(contentsOf: machines.map { .machine($0) })
+            annotations.append(contentsOf: couriers.map { .courier($0) })
             annotations.append(.address(addressModel))
             
-            // Обновляем state целиком — source of truth: machines/couriers/selectedAddress/annotations
-            state = .init(
-                address: location,
-                center: center,
-                machines: newMachines,
-                couriers: newCouriers,
+            let newState = MapData(
+                address: initialAddress,
+                center: initialCenter,
+                machines: machines,
+                couriers: couriers,
                 selectedAddress: addressModel,
                 annotations: annotations,
                 showChatButton: false
             )
             
+            await MainActor.run {
+                self.state = newState
+            }
         } catch {
-            // Если произошла ошибка — логируем и не затираем текущее state (fallback).
-            // Можно также показать UI-ошибку, или очистить только specific fields.
-            //log("Loaded \(newMachines.count) machines, \(newCouriers.count) couriers")
-            
-            // Вариант поведения: оставить старый state, но обновить центр/адрес (локальная info)
-            state?.address = location
-            state?.center = center
-            // Если у тебя есть selectedAddress логика — обновляем её
-            state?.selectedAddress = addressModel
-            // Альтернатива: очистить машины, если нужно:
-            // state.machines = []
-            // rebuild annotations, например:
-            rebuildAnnotations()
+            // При ошибке — обновляем только центр/адрес
+            await MainActor.run {
+                self.state?.address = initialAddress
+                self.state?.center = initialCenter
+                self.state?.selectedAddress = addressModel
+                rebuildAnnotations()
+            }
         }
     }
     
-  
     private func rebuildAnnotations() {
-        var annotations: [MapAnnotation] = []
-        guard let state = state else { return }
-        annotations.append(contentsOf: state.machines.map { MapAnnotation.machine($0) })
-        annotations.append(contentsOf: state.couriers.map { MapAnnotation.courier($0) })
-        if let addr = state.selectedAddress {
-            annotations.append(.address(addr))
+        guard let s = state else { return }
+        var newAnnotations: [MapAnnotation] = []
+        newAnnotations.append(contentsOf: s.machines.map { .machine($0) })
+        newAnnotations.append(contentsOf: s.couriers.map { .courier($0) })
+        if let addr = s.selectedAddress {
+            newAnnotations.append(.address(addr))
         }
-        self.state?.annotations = annotations
+        state?.annotations = newAnnotations
     }
     
     @MainActor
@@ -130,62 +136,48 @@ final class MapViewModel: ObservableObject {
             rebuildAnnotations()
             return
         }
-
         let normalized = term.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-
-        let filteredMachines = state?.machines.filter { machine in
+        let filtered = state?.machines.filter { machine in
             machine.menu.contains { drink in
                 drink.name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
                     .contains(normalized)
             }
+        } ?? []
+        var newAnn: [MapAnnotation] = filtered.map { .machine($0) }
+        newAnn.append(contentsOf: state?.couriers.map { .courier($0) } ?? [])
+        if let addr = state?.selectedAddress {
+            newAnn.append(.address(addr))
         }
-        guard let state = state, let filtered = filteredMachines else { return }
-
-        // Собираем итоговые аннотации: отфильтрованные машины + курьеры + адрес
-        var annotation: [MapAnnotation] = filtered.map { MapAnnotation.machine($0) }
-        annotation.append(contentsOf: state.couriers.map { MapAnnotation.courier($0) })
-        if let address = state.selectedAddress { annotation.append(.address(address)) }
-
-        self.state?.annotations = annotation
+        state?.annotations = newAnn
     }
     
-    // Установка адреса вручную — передаём результат наружу (совместимо с прежним контрактом)
     func setManualAddress(_ text: String, completion: @escaping (Result<(Coordinate, String), Error>) -> Void) {
         locationService.setManualAddress(text) { [weak self] result in
-                switch result {
-                case .success(let (coordinate, address)):
-                    DispatchQueue.global().async {
-                        self?.state?.center = coordinate
-                        self?.state?.address = address
-                        self?.state?.annotations.append(.address(AddressModel(title: address, coordinate: coordinate)))
-                    }
-                    completion(.success((coordinate, address)))
-                case .failure(let error):
-                    completion(.failure(error))
+            switch result {
+            case .success((let coord, let address)):
+                DispatchQueue.main.async {
+                    let addrModel = AddressModel(title: address, coordinate: coord)
+                    self?.state?.center = coord
+                    self?.state?.address = address
+                    self?.state?.selectedAddress = addrModel
+                    self?.rebuildAnnotations()
                 }
+                completion(.success((coord, address)))
+            case .failure(let error):
+                completion(.failure(error))
             }
         }
+    }
     
     func selectAnnotation(_ annotation: MapAnnotation) {
-            switch annotation {
-            case .machine(let model):
-                onOpenMachine?(model)
-            case .courier:
-                // можно прокинуть открытие чата или другое действие
-                print("onOpenChat?")
-            case .address(let address):
-                print("Текущий адрес \(address)")
-            }
+        switch annotation {
+        case .machine(let model):
+            onOpenMachine?(model)
+        case .courier:
+            onOpenChat?()
+        case .address(let a):
+            // можно обновить selectedAddress
+            state?.selectedAddress = a
         }
-    
-//    func showCourier(at coordinate: CourierModel) {
-//            DispatchQueue.main.async {
-//                // удаляем старых курьеров (если хотим один)
-//                self.state.annotations.removeAll { annotation in
-//                    if case .courier = annotation { return true } else { return false }
-//                }
-//                self.state.annotations.append(.courier(coordinate))
-//                self.state.showChatButton = true
-//            }
-//        }
     }
+}

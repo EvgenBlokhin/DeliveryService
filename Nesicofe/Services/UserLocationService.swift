@@ -1,228 +1,164 @@
 import Foundation
 import CoreLocation
-import UIKit
 import Combine
 
 final class UserLocationService: NSObject {
-    // MARK: - Публичное состояние (UI/другие части приложения читают это)
-    @Published private(set) var courierLocation: [Coordinate] = []
-    @Published private(set) var currentAddress: String = AppConstants.defaultAddress
-    @Published private(set) var currentCenter: Coordinate = AppConstants.defaultCoord
-
-    // колбеки (оставил, как у тебя)
-    var onLocationAuthChanged: ((CLAuthorizationStatus) -> Void)?
-    var onLocationUserUpdated: ((Coordinate, String) -> Void)?
-
-    // MARK: - Внтренние
-    private let locationManager = CLLocationManager()
-    private let geocoder = CLGeocoder()
-    private var cancellables = Set<AnyCancellable>()
-
+    // MARK: - Публичные свойства (внутреннее состояние)
+    private(set) var currentAddress: String = AppConstants.defaultAddress
+    private(set) var currentCenter: Coordinate = AppConstants.defaultCoord
+    
+    // Паблишеры для координат (GPS) — чтобы другие части могли подписываться
+    let locationPublisher = PassthroughSubject<Coordinate, Never>()
+    // Паблишер адреса
+    let addressPublisher = PassthroughSubject<String, Never>()
+    
+    // MARK: - Зависимости
+    private let locationManager: CLLocationManager
+    private let geocoder: CLGeocoder
     private let authService: AuthService
-
-    // поток для координат — публикуем сюда координаты из didUpdateLocations
-    private let locationSubject = PassthroughSubject<Coordinate, Never>()
-
-    // флаг роли (внутренний источник истины)
+    private var webSocket: WebSocketService?
+    
+    // MARK: - Внутренние
+    private var cancellables = Set<AnyCancellable>()
     @Published private var isCourier: Bool = false
-
-    // для уменьшения частоты отправки на сервер
+    
+    // Контроль частоты отправки на сервер
     private var lastSentLocation: CLLocation?
-    private let sendDistanceThresholdMeters: CLLocationDistance = 10 // шлём только при смещении >10м
-    private let sendThrottleSeconds: TimeInterval = 2.0
-
+    private let sendDistanceThreshold: CLLocationDistance = 30
+    private let sendThrottleInterval: TimeInterval = 1.0
+    
+    // Контроль частоты геокодирования
+    private var lastGeocodeTime: Date?
+    private let minGeocodeInterval: TimeInterval = 5
+    
     // MARK: - Init
-    init(authService: AuthService) {
+    init(authService: AuthService, defaultAddress: String, defaultCoord: Coordinate) {
         self.authService = authService
+        self.locationManager = CLLocationManager()
+        self.geocoder = CLGeocoder()
+        
+        self.currentAddress = defaultAddress
+        self.currentCenter = defaultCoord
+        
         super.init()
+        
         locationManager.delegate = self
-
-        // Настройки locationManager
-        locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        locationManager.distanceFilter = 5 // метры — регулировка исходя из потребностей
-        locationManager.pausesLocationUpdatesAutomatically = true
-        // Если нужны фоновые обновления, установите allowsBackgroundLocationUpdates = true
-        // и проверьте соответствующие Info.plist и политики App Store:
-        // locationManager.allowsBackgroundLocationUpdates = true
-
-        // Подписка на роль — единоразово
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = sendDistanceThreshold  // обновлять при смещении >= 30 метров
+        
+        // Подписка на роль
         authService.$currentUser
             .map { $0?.role == .courier }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] isCourier in
-                self?.isCourier = isCourier
+            .sink { [weak self] courier in
+                self?.isCourier = courier
             }
             .store(in: &cancellables)
-
-        // Pipeline: берем координаты -> фильтруем по роли -> throttle -> отправляем
-        locationSubject
+        
+        // Подписка на поток координат
+        locationPublisher
             .combineLatest($isCourier)
-            .filter { _, isCourier in isCourier }           // только для курьеров
+            .filter { _, isCourier in
+                // Даже если не курьер — можно публиковать локально, но отправлять только когда isCourier == true
+                isCourier
+            }
             .map { coord, _ in coord }
-            .throttle(for: .seconds(sendThrottleSeconds), scheduler: DispatchQueue.global(), latest: true)
+            .throttle(for: .seconds(sendThrottleInterval), scheduler: DispatchQueue.global(), latest: true)
             .sink { [weak self] coord in
                 guard let self = self else { return }
-                // Обновляем локальное состояние (UI) на main
-                DispatchQueue.main.async {
-                    self.currentCenter = coord
-                    self.courierLocation.append(coord)
-                }
-
-                // Решаем — отправлять на сервер или нет (проверяем расстояние)
+                
+                // Отправка на сервер через WebSocket
                 let newLoc = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+                let shouldSend: Bool
                 if let last = self.lastSentLocation {
-                    if newLoc.distance(from: last) >= self.sendDistanceThresholdMeters {
-                        self.lastSentLocation = newLoc
-                        self.sendLocationToServer(coord)
-                    } // иначе — не значительное смещение, пропускаем
+                    shouldSend = newLoc.distance(from: last) >= self.sendDistanceThreshold
                 } else {
+                    shouldSend = true
+                }
+                if shouldSend {
                     self.lastSentLocation = newLoc
-                    self.sendLocationToServer(coord)
+                    
+                    struct Payload: Encodable {
+                        let lat: Double
+                        let lon: Double
+                        let timestamp: TimeInterval
+                    }
+                    let payload = Payload(lat: coord.latitude, lon: coord.longitude, timestamp: Date().timeIntervalSince1970)
+                    self.webSocket?.sendEnvelope(type: .updateCourierLocation, orderId: nil, payload: payload)
                 }
             }
             .store(in: &cancellables)
     }
-
-    // MARK: - Public API
+    
+    
+    // MARK: - Публичные методы
+    func setWebSocket(_ socket: WebSocketService) {
+        self.webSocket = socket
+    }
+    
     func requestAccess() {
         let status = locationManager.authorizationStatus
         switch status {
         case .notDetermined:
             locationManager.requestWhenInUseAuthorization()
-        case .denied, .restricted:
-            showSettingsAlert()
         case .authorizedWhenInUse, .authorizedAlways:
             locationManager.startUpdatingLocation()
+        case .denied, .restricted:
+            // можно отправить callback / показать UI как-то
+            break
         @unknown default:
             break
         }
     }
-
+    
+    func stopTracking() {
+        locationManager.stopUpdatingLocation()
+    }
+    
     func centerOnCurrent() {
         locationManager.requestLocation()
     }
-
-    //MARK: Ручная установка адреса (пользователь ввёл текст)
+    
     func setManualAddress(_ text: String, completion: @escaping (Result<(Coordinate, String), Error>) -> Void) {
-        // Отменяем предыдущие запросы (если были)
         geocoder.cancelGeocode()
-
-        // Нормализуем вход
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             DispatchQueue.main.async {
-                let err = NSError(domain: "geo", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "Пустой адрес"
-                ])
-                completion(.failure(err))
+                completion(.failure(NSError(domain: "geo", code: 1, userInfo: [NSLocalizedDescriptionKey: "Пустой адрес"])))
             }
             return
         }
-
         geocoder.geocodeAddressString(trimmed) { [weak self] placemarks, error in
-            guard let self = self else { return } // если self освобождён — молча выходим
-
+            guard let self = self else { return }
             if let error = error {
+                DispatchQueue.main.async { completion(.failure(error)) }
+                return
+            }
+            guard let pm = placemarks?.first, let loc = pm.location else {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(NSError(domain: "geo", code: 2, userInfo: [NSLocalizedDescriptionKey: "Адрес не найден"])))
                 }
                 return
             }
-
-            guard let mark = placemarks?.first, let location = mark.location else {
-                DispatchQueue.main.async {
-                    completion(.failure(
-                        NSError(domain: "geo", code: 1, userInfo: [
-                            NSLocalizedDescriptionKey: "Адрес не найден"
-                        ])
-                    ))
-                }
-                return
-            }
-
-            let coord = Coordinate(location.coordinate)
+            let coord = Coordinate(loc.coordinate)
             let address = [
-                mark.locality,
-                mark.thoroughfare,
-                mark.subThoroughfare
-            ]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .joined(separator: ", ")
-
+                pm.locality, pm.thoroughfare, pm.subThoroughfare
+            ].compactMap { $0 }.joined(separator: ", ")
             let finalAddress = address.isEmpty ? trimmed : address
-
-            // все обновления состояния и колбэки — на main
+            
+            // обновляем внутренние свойства
+            self.currentCenter = coord
+            self.currentAddress = finalAddress
+            
+            // оповещаем через publisher
+            self.locationPublisher.send(coord)
+            self.addressPublisher.send(finalAddress)
+            
             DispatchQueue.main.async {
-                self.currentCenter = coord
-                self.currentAddress = finalAddress
                 completion(.success((coord, finalAddress)))
-                self.onLocationUserUpdated?(coord, finalAddress)
             }
         }
-    }
-
-    // MARK: - Helpers
-    private func showSettingsAlert() {
-        DispatchQueue.main.async {
-            let alert = UIAlertController(
-                title: "Геолокация отключена",
-                message: "Пожалуйста, включите геолокацию в настройках для работы приложения",
-                preferredStyle: .alert
-            )
-
-            alert.addAction(UIAlertAction(title: "Настройки", style: .default) { _ in
-                self.openSettings()
-            })
-            alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first?.rootViewController {
-                rootVC.present(alert, animated: true)
-            }
-        }
-    }
-
-    private func openSettings() {
-        guard let settingsUrl = URL(string: UIApplication.openSettingsURLString) else { return }
-        if UIApplication.shared.canOpenURL(settingsUrl) {
-            UIApplication.shared.open(settingsUrl)
-        }
-    }
-
-    private func sendLocationToServer(_ coord: Coordinate) {
-        // Примитивный пример POST — подставь свой URL/авторизацию/формат
-        guard let url = URL(string: "https://api.example.com/courier/location") else { return }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        // Если у тебя есть access token — добавь:
-        // request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let body: [String: Any] = [
-            "latitude": coord.latitude,
-            "longitude": coord.longitude,
-            "timestamp": Date().timeIntervalSince1970
-        ]
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-        } catch {
-            print("Failed to encode location body:", error)
-            return
-        }
-
-        // Отправляем в background (не блокируем main)
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                // обработка ошибок/ретраи — по потребности
-                print("sendLocationToServer error:", error)
-                return
-            }
-            // при необходимости — проверка response/data
-        }.resume()
     }
 }
 
@@ -230,59 +166,47 @@ final class UserLocationService: NSObject {
 extension UserLocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
-        onLocationAuthChanged?(status)
-
-        switch status {
-        case .authorizedWhenInUse, .authorizedAlways:
-            // Начинаем обновления
+        // Можно оповестить внешний код о статусе
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
             manager.startUpdatingLocation()
-        case .denied, .restricted:
-            showSettingsAlert()
-        default:
-            break
         }
     }
-
+    
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         let coord = Coordinate(loc.coordinate)
-
-        // Публикуем в subject — дальше pipeline решает, отправлять ли на сервер
-        locationSubject.send(coord)
-
-        // Reverse geocode — делаем, но дросселим/контролируем: пример — только если адрес пуст или прошло >N сек
-        // Здесь простой вариант — попробуем геокодировать, но не блокируем основной поток
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        
+        // Публикуем каждый раз, когда геопозиция реально обновилась (>= 30м фильтр уже на distanceFilter)
+        locationPublisher.send(coord)
+        
+        // Геокодирование, но не слишком часто
+        let now = Date()
+        if let last = lastGeocodeTime, now.timeIntervalSince(last) < minGeocodeInterval {
+            return
+        }
+        lastGeocodeTime = now
+        
+        geocoder.reverseGeocodeLocation(loc) { [weak self] placemarks, error in
             guard let self = self else { return }
-
-            // Простая защита от частых вызовов: если geocoder занят — пропускаем
-            if self.geocoder.isGeocoding {
-                return
+            guard let pm = placemarks?.first else { return }
+            
+            // CLPlacemark.location может отличаться от входной точки
+            if let placeLocation = pm.location {
+                let placeCoord = Coordinate(placeLocation.coordinate)
+                self.currentCenter = placeCoord
+            } else {
+                self.currentCenter = coord
             }
-
-            self.geocoder.reverseGeocodeLocation(loc) { placemarks, error in
-                guard error == nil, let pm = placemarks?.first else { return }
-                let address = [
-                    pm.locality,
-                    pm.thoroughfare,
-                    pm.subThoroughfare
-                ]
-                .compactMap { $0 }
-                .joined(separator: ", ")
-
-                if !address.isEmpty {
-                    DispatchQueue.main.async {
-                        self.currentAddress = address
-                        self.currentCenter = coord
-                        self.onLocationUserUpdated?(coord, address)
-                    }
-                } else {
-                    // при отсутствии адреса — можно не обновлять currentAddress
-                }
+            
+            let addressParts = [pm.locality, pm.thoroughfare, pm.subThoroughfare]
+            let address = addressParts.compactMap { $0 }.joined(separator: ", ")
+            if !address.isEmpty {
+                self.currentAddress = address
+                self.addressPublisher.send(address)
             }
         }
     }
-
+    
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location error:", error)
     }
